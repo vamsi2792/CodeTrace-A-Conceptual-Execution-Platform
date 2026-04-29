@@ -26,6 +26,12 @@ def _extract_json(content: str) -> dict | None:
     return None
 
 
+def is_deterministic_code(code_text: str) -> bool:
+    normalized = code_text.lower()
+    forbidden_tokens = ["input(", "raw_input(", "sys.stdin", "sys.argv", "getpass(", "prompt("]
+    return not any(token in normalized for token in forbidden_tokens)
+
+
 def generate_ai_snippet(difficulty: str) -> dict | None:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
@@ -34,7 +40,9 @@ def generate_ai_snippet(difficulty: str) -> dict | None:
     prompt = (
         f"Generate one Python code snippet for a {difficulty} difficulty programming exercise. "
         "Return ONLY a JSON object with keys: code_text, expected_output, explanation. "
-        "code_text must be runnable Python code. expected_output must be exact console output. "
+        "code_text must be runnable Python code and must not require interactive input. "
+        "Do not use input(), raw_input(), sys.stdin, sys.argv, getpass(), prompt(), or any runtime user input. "
+        "expected_output must be exact console output for the code as written. "
         "explanation should be concise and beginner-friendly."
     )
 
@@ -52,6 +60,8 @@ def generate_ai_snippet(difficulty: str) -> dict | None:
             return None
         required_keys = {"code_text", "expected_output", "explanation"}
         if not required_keys.issubset(parsed):
+            return None
+        if not is_deterministic_code(parsed["code_text"]):
             return None
         return parsed
     except Exception:

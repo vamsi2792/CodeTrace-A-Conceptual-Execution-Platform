@@ -49,6 +49,22 @@ def get_random_snippet(db: Session, difficulty: str, exclude_snippet_id: int | N
     )
 
 
+def is_deterministic_code(code_text: str) -> bool:
+    normalized = code_text.lower()
+    forbidden_tokens = ["input(", "raw_input(", "sys.stdin", "sys.argv", "getpass(", "prompt("]
+    return not any(token in normalized for token in forbidden_tokens)
+
+
+def get_random_safe_snippet(db: Session, difficulty: str, exclude_snippet_id: int | None = None, attempts: int = 8):
+    for _ in range(attempts):
+        snippet = get_random_snippet(db, difficulty, exclude_snippet_id)
+        if snippet is None:
+            break
+        if is_deterministic_code(snippet.code_text):
+            return snippet
+    return get_random_snippet(db, difficulty, exclude_snippet_id)
+
+
 def get_snippet(db: Session, snippet_id: int):
     return db.query(models.Snippet).filter(models.Snippet.id == snippet_id).first()
 
