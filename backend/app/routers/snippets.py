@@ -16,7 +16,12 @@ def read_snippet(difficulty: str, db: Session = Depends(get_db), current_user=De
 
 
 @router.get("/generate/{difficulty}", response_model=schemas.SnippetOut)
-def generate_snippet(difficulty: str, db: Session = Depends(get_db), current_user=Depends(auth.get_current_user)):
+def generate_snippet(
+    difficulty: str,
+    exclude_id: int | None = None,
+    db: Session = Depends(get_db),
+    current_user=Depends(auth.get_current_user),
+):
     difficulty_title = difficulty.title()
     generated = ai_snippet.generate_ai_snippet(difficulty_title)
     if generated and all(k in generated for k in ("code_text", "expected_output", "explanation")):
@@ -29,7 +34,7 @@ def generate_snippet(difficulty: str, db: Session = Depends(get_db), current_use
         )
         return snippet
 
-    snippet = crud.get_random_snippet(db, difficulty_title)
+    snippet = crud.get_random_snippet(db, difficulty_title, exclude_snippet_id=exclude_id)
     if not snippet:
         raise HTTPException(status_code=404, detail="Snippet not found for this difficulty")
     return snippet

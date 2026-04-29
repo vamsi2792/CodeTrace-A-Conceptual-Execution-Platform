@@ -76,14 +76,14 @@ function App() {
     }
   }
 
-  async function selectDifficulty(level) {
+  async function selectDifficulty(level, excludeSnippetId = null) {
     setError('')
     setLoading(true)
     setSelectedDifficulty(level)
     setAnswer('')
     setResult(null)
     try {
-      const data = await fetchSnippet(level)
+      const data = await fetchSnippet(level, excludeSnippetId)
       setSnippet(data)
       setTimer(120)
       setScreen('exercise')
@@ -111,7 +111,7 @@ function App() {
 
   function handleNext() {
     if (selectedDifficulty) {
-      selectDifficulty(selectedDifficulty)
+      selectDifficulty(selectedDifficulty, snippet?.id ?? null)
     }
   }
 

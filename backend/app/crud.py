@@ -32,8 +32,21 @@ def get_user_stats(db: Session, user_id: int):
     return db.query(models.UserStat).filter(models.UserStat.user_id == user_id).first()
 
 
-def get_random_snippet(db: Session, difficulty: str):
-    return db.query(models.Snippet).filter(models.Snippet.difficulty_level == difficulty).order_by(func.random()).first()
+def get_random_snippet(db: Session, difficulty: str, exclude_snippet_id: int | None = None):
+    query = db.query(models.Snippet).filter(models.Snippet.difficulty_level == difficulty)
+    if exclude_snippet_id is not None:
+        query = query.filter(models.Snippet.id != exclude_snippet_id)
+    snippet = query.order_by(func.random()).first()
+    if snippet:
+        return snippet
+    # Fallback: if filtering excludes all rows for this difficulty,
+    # return any snippet in the same difficulty.
+    return (
+        db.query(models.Snippet)
+        .filter(models.Snippet.difficulty_level == difficulty)
+        .order_by(func.random())
+        .first()
+    )
 
 
 def get_snippet(db: Session, snippet_id: int):

@@ -40,8 +40,9 @@ export async function fetchStats() {
   return request('/api/users/me/stats')
 }
 
-export async function fetchSnippet(difficulty) {
-  return request(`/api/snippets/generate/${difficulty}`)
+export async function fetchSnippet(difficulty, excludeSnippetId = null) {
+  const query = excludeSnippetId ? `?exclude_id=${excludeSnippetId}` : ''
+  return request(`/api/snippets/generate/${difficulty}${query}`)
 }
 
 export async function submitAttempt(snippet_id, user_answer) {
