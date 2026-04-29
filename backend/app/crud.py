@@ -40,6 +40,19 @@ def get_snippet(db: Session, snippet_id: int):
     return db.query(models.Snippet).filter(models.Snippet.id == snippet_id).first()
 
 
+def create_snippet(db: Session, difficulty_level: str, code_text: str, expected_output: str, explanation: str):
+    snippet = models.Snippet(
+        difficulty_level=difficulty_level,
+        code_text=code_text,
+        expected_output=expected_output,
+        explanation=explanation,
+    )
+    db.add(snippet)
+    db.commit()
+    db.refresh(snippet)
+    return snippet
+
+
 def create_attempt(db: Session, user_id: int, snippet_id: int, user_answer: str, is_correct: bool):
     attempt = models.Attempt(
         user_id=user_id,

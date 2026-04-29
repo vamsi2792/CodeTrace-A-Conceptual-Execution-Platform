@@ -41,7 +41,7 @@ export async function fetchStats() {
 }
 
 export async function fetchSnippet(difficulty) {
-  return request(`/api/snippets/${difficulty}`)
+  return request(`/api/snippets/generate/${difficulty}`)
 }
 
 export async function submitAttempt(snippet_id, user_answer) {

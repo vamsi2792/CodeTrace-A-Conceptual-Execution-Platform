@@ -23,6 +23,14 @@ This repository contains a full-stack Code Reading Educational Platform built wi
    export SECRET_KEY="your-secret-key"
    ```
 
+3. (Optional) Enable AI-generated snippets by adding OpenAI settings:
+   ```bash
+   export OPENAI_API_KEY="your-openai-api-key"
+   export OPENAI_MODEL="gpt-3.5-turbo"
+   ```
+
+If `OPENAI_API_KEY` is not set, the backend will fall back to existing database snippets.
+
 3. Create the database if needed and run migrations:
    ```bash
    createdb code_trace_db
