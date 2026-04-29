@@ -25,3 +25,8 @@ def submit_attempt(attempt: schemas.AttemptCreate, db: Session = Depends(get_db)
         "user_answer": attempt.user_answer,
         "explanation": snippet.explanation,
     }
+
+
+@router.get("/history", response_model=list[schemas.AttemptHistoryItem])
+def get_attempt_history(db: Session = Depends(get_db), current_user=Depends(auth.get_current_user)):
+    return crud.get_attempt_history(db, current_user.id)

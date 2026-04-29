@@ -1,22 +1,18 @@
 import { useEffect, useState } from 'react'
-import { login, register, fetchStats, fetchSnippet, submitAttempt } from './api'
-
-const DIFFICULTIES = ['Beginner', 'Intermediate', 'Advanced']
-
-function normalizeDifficulty(value) {
-  return value.toLowerCase()
-}
+import { fetchHistory, fetchSnippet, fetchStats, login, register, submitAttempt } from './api'
 
 function App() {
   const [screen, setScreen] = useState('login')
   const [mode, setMode] = useState('login')
+  const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [token, setToken] = useState(localStorage.getItem('code_trace_token') || '')
   const [stats, setStats] = useState(null)
+  const [history, setHistory] = useState([])
   const [snippet, setSnippet] = useState(null)
-  const [selectedDifficulty, setSelectedDifficulty] = useState(null)
+  const [selectedDifficulty, setSelectedDifficulty] = useState('Beginner')
   const [answer, setAnswer] = useState('')
   const [timer, setTimer] = useState(120)
   const [result, setResult] = useState(null)
@@ -25,8 +21,9 @@ function App() {
   useEffect(() => {
     if (token) {
       localStorage.setItem('code_trace_token', token)
-      setScreen('dashboard')
       loadStats()
+      loadHistory()
+      setScreen('dashboard')
     }
   }, [token])
 
@@ -34,40 +31,35 @@ function App() {
     let interval
     if (screen === 'exercise' && snippet) {
       interval = setInterval(() => {
-        setTimer((current) => {
-          if (current <= 1) {
-            clearInterval(interval)
-            return 0
-          }
-          return current - 1
-        })
+        setTimer((current) => (current <= 1 ? 0 : current - 1))
       }, 1000)
     }
     return () => clearInterval(interval)
   }, [screen, snippet])
 
   async function loadStats() {
-    try {
-      const data = await fetchStats()
-      setStats(data)
-    } catch (err) {
-      console.error(err)
-      setError('Unable to load stats. Please log in again.')
-      setScreen('login')
-    }
+    const data = await fetchStats()
+    setStats(data)
+  }
+
+  async function loadHistory() {
+    const data = await fetchHistory()
+    setHistory(data || [])
   }
 
   async function handleAuth() {
     setError('')
     setLoading(true)
     try {
-      const action = mode === 'login' ? login : register
-      const payload = await action(email, password)
-      if (payload.access_token) {
+      if (mode === 'register') {
+        if (!username.trim()) {
+          throw new Error('Please enter a username')
+        }
+        const payload = await register(username.trim(), email, password)
         setToken(payload.access_token)
-        setScreen('dashboard')
       } else {
-        setScreen('dashboard')
+        const payload = await login(email, password)
+        setToken(payload.access_token)
       }
     } catch (err) {
       setError(err.message)
@@ -102,6 +94,7 @@ function App() {
       const data = await submitAttempt(snippet.id, answer)
       setResult(data)
       await loadStats()
+      await loadHistory()
     } catch (err) {
       setError(err.message)
     } finally {
@@ -109,193 +102,171 @@ function App() {
     }
   }
 
-  function handleNext() {
-    if (selectedDifficulty) {
-      selectDifficulty(selectedDifficulty, snippet?.id ?? null)
-    }
-  }
-
   function handleLogout() {
     localStorage.removeItem('code_trace_token')
     setToken('')
     setStats(null)
+    setHistory([])
     setSnippet(null)
     setScreen('login')
   }
 
+  const displayName = stats?.username || 'User'
+  let authButtonLabel = mode === 'login' ? 'Log in' : 'Create account'
+  if (loading) authButtonLabel = 'Working...'
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <div className="mx-auto max-w-5xl px-6 py-10">
-        <header className="mb-8 flex items-center justify-between">
-          <div>
-            <p className="text-sm uppercase tracking-[0.3em] text-slate-500">CodeTrace</p>
-            <h1 className="mt-2 text-3xl font-semibold text-slate-900">Code Reading Educational Platform</h1>
-          </div>
-          {token && (
-            <button onClick={handleLogout} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100">
-              Log out
-            </button>
-          )}
-        </header>
-
-        {screen === 'login' && (
-          <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-            <div className="mb-6 flex items-center justify-between gap-4">
-              <h2 className="text-2xl font-semibold">{mode === 'login' ? 'Welcome back' : 'Create your account'}</h2>
-              <button
-                type="button"
-                onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
-                className="rounded-full bg-slate-900 px-4 py-2 text-sm text-white hover:bg-slate-800"
-              >
-                {mode === 'login' ? 'Register' : 'Log in'}
-              </button>
+    <div className="min-h-screen bg-slate-200 p-4 text-slate-900">
+      <div className="mx-auto max-w-6xl">
+        {token && (
+          <header className="overflow-hidden rounded-t-2xl border border-slate-300 bg-white">
+            <div className="flex items-center justify-between px-5 py-3">
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-300 bg-slate-100 text-[10px] text-slate-600">~~</div>
+                  <p className="text-3xl font-semibold">CodeTrace</p>
+                </div>
+                <div className="flex items-center gap-6 text-xl">
+                  <button type="button" onClick={() => setScreen('dashboard')} className={screen === 'dashboard' ? 'border-b-2 border-blue-500 pb-1 font-medium text-blue-600' : 'pb-1 text-slate-700'}>Home</button>
+                  <button type="button" onClick={() => setScreen('history')} className={screen === 'history' ? 'border-b-2 border-blue-500 pb-1 font-medium text-blue-600' : 'pb-1 text-slate-700'}>History</button>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-9 w-9 rounded-full bg-slate-300" />
+                <span className="text-sm font-medium text-slate-700">{displayName}</span>
+                <button onClick={handleLogout} className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs text-slate-700 hover:bg-slate-100">Log out</button>
+              </div>
             </div>
-            <div className="space-y-4">
-              <label className="block text-sm font-medium text-slate-700">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-slate-500 focus:outline-none"
-              />
-              <label className="block text-sm font-medium text-slate-700">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-slate-500 focus:outline-none"
-              />
-              {error && <p className="text-sm text-red-600">{error}</p>}
-              <button
-                onClick={handleAuth}
-                disabled={loading}
-                className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {loading ? 'Working...' : mode === 'login' ? 'Log in' : 'Create account'}
-              </button>
-            </div>
-          </div>
+          </header>
         )}
+        <div className={`rounded-b-2xl border border-slate-300 bg-slate-100 p-5 ${token ? 'border-t-0' : ''}`}>
+          {screen === 'login' && (
+            <div className="mx-auto max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-xl font-semibold">{mode === 'login' ? 'Welcome back' : 'Create your account'}</h2>
+                <button type="button" onClick={() => setMode(mode === 'login' ? 'register' : 'login')} className="rounded-full bg-slate-900 px-3 py-1 text-xs text-white hover:bg-slate-800">
+                  {mode === 'login' ? 'Register' : 'Log in'}
+                </button>
+              </div>
+              <div className="space-y-3">
+                {mode === 'register' && (
+                  <>
+                    <label htmlFor="auth-username" className="block text-sm font-medium text-slate-700">Username</label>
+                    <input id="auth-username" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 focus:border-slate-500 focus:outline-none" />
+                  </>
+                )}
+                <label htmlFor="auth-email" className="block text-sm font-medium text-slate-700">Email</label>
+                <input id="auth-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 focus:border-slate-500 focus:outline-none" />
+                <label htmlFor="auth-password" className="block text-sm font-medium text-slate-700">Password</label>
+                <input id="auth-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 focus:border-slate-500 focus:outline-none" />
+                {error && <p className="text-sm text-red-600">{error}</p>}
+                <button onClick={handleAuth} disabled={loading} className="w-full rounded-xl bg-slate-900 px-3 py-2 text-white hover:bg-slate-800 disabled:opacity-60">
+                  {authButtonLabel}
+                </button>
+              </div>
+            </div>
+          )}
 
-        {screen === 'dashboard' && stats && (
-          <div className="space-y-6">
-            <section className="grid gap-4 sm:grid-cols-3">
-              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                <p className="text-sm text-slate-500">Snippets Solved</p>
-                <p className="mt-3 text-3xl font-semibold text-slate-900">{stats.snippets_solved}</p>
+          {screen === 'dashboard' && stats && (
+            <div className="space-y-4">
+              <section>
+                <h2 className="text-4xl font-bold">Welcome back, {displayName}!</h2>
+                <p className="text-base text-slate-700">Track your progress and start your next coding challenge.</p>
+              </section>
+              <section className="grid gap-4 sm:grid-cols-3">
+                <div className="rounded-xl border border-slate-200 bg-white p-4">
+                  <p className="text-xl font-semibold">Snippets Solved</p>
+                  <p className="mt-2 text-4xl font-bold">{stats.snippets_solved}</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-4">
+                  <p className="text-xl font-semibold">Current Streak</p>
+                  <p className="mt-2 text-4xl font-bold">{stats.current_streak} {stats.current_streak === 1 ? 'Day' : 'Days'}</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-4">
+                  <p className="text-xl font-semibold">Overall Accuracy</p>
+                  <p className="mt-2 text-4xl font-bold">{stats.accuracy_percentage}%</p>
+                </div>
+              </section>
+              <section className="rounded-xl border border-slate-300 bg-white p-5">
+                <h3 className="text-4xl font-bold">Select Difficulty Level</h3>
+                <div className="mt-3 grid gap-4 sm:grid-cols-3">
+                  <div className="rounded-xl border border-slate-200 p-4 text-center">
+                    <p className="text-3xl">🚀</p>
+                    <p className="mt-2 text-2xl font-semibold">Beginner</p>
+                    <button onClick={() => selectDifficulty('Beginner')} className="mt-3 w-full rounded-lg bg-emerald-600 py-2 text-lg font-semibold text-white hover:bg-emerald-700">Start</button>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 p-4 text-center">
+                    <p className="text-3xl">⚙️</p>
+                    <p className="mt-2 text-2xl font-semibold">Intermediate</p>
+                    <button onClick={() => selectDifficulty('Intermediate')} className="mt-3 w-full rounded-lg bg-blue-600 py-2 text-lg font-semibold text-white hover:bg-blue-700">Start</button>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 p-4 text-center">
+                    <p className="text-3xl">⚡</p>
+                    <p className="mt-2 text-2xl font-semibold">Advanced</p>
+                    <button onClick={() => selectDifficulty('Advanced')} className="mt-3 w-full rounded-lg bg-purple-700 py-2 text-lg font-semibold text-white hover:bg-purple-800">Start</button>
+                  </div>
+                </div>
+              </section>
+            </div>
+          )}
+
+          {screen === 'history' && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-3xl font-bold">Attempt History</h2>
+                <button onClick={() => setScreen('dashboard')} className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-sm">Back</button>
               </div>
-              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                <p className="text-sm text-slate-500">Current Streak</p>
-                <p className="mt-3 text-3xl font-semibold text-slate-900">{stats.current_streak}</p>
-              </div>
-              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                <p className="text-sm text-slate-500">Overall Accuracy</p>
-                <p className="mt-3 text-3xl font-semibold text-slate-900">{stats.accuracy_percentage}%</p>
-              </div>
-            </section>
-            <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-              <h2 className="mb-4 text-2xl font-semibold">Choose a difficulty</h2>
-              <div className="grid gap-4 sm:grid-cols-3">
-                {DIFFICULTIES.map((level) => (
-                  <button
-                    key={level}
-                    onClick={() => selectDifficulty(level)}
-                    className="rounded-3xl border border-slate-300 bg-slate-50 px-6 py-8 text-left transition hover:border-slate-400 hover:bg-slate-100"
-                  >
-                    <p className="text-sm uppercase tracking-[0.2em] text-slate-500">{level}</p>
-                    <p className="mt-3 text-lg font-semibold text-slate-900">Practice {level.toLowerCase()} snippets</p>
-                  </button>
+              <div className="max-h-[55vh] overflow-auto rounded-xl border border-slate-300 bg-white">
+                {history.length === 0 && <p className="p-4 text-slate-600">No attempts yet.</p>}
+                {history.map((item) => (
+                  <div key={item.attempt_id} className="border-b border-slate-200 p-4 last:border-b-0">
+                    <div className="flex items-center justify-between">
+                      <p className="font-semibold">{item.difficulty_level}</p>
+                      <span className={`text-sm font-medium ${item.is_correct ? 'text-emerald-600' : 'text-rose-600'}`}>{item.is_correct ? 'Correct' : 'Incorrect'}</span>
+                    </div>
+                    <pre className="mt-2 overflow-x-auto rounded bg-slate-50 p-2 text-xs">{item.code_text}</pre>
+                  </div>
                 ))}
               </div>
-            </section>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-          </div>
-        )}
-
-        {screen === 'exercise' && snippet && (
-          <div className="space-y-6">
-            <div className="rounded-3xl border border-slate-200 bg-slate-950 p-6 text-white shadow-sm">
-              <div className="flex items-center justify-between">
-                <p className="text-sm uppercase tracking-[0.2em] text-slate-400">{snippet.difficulty_level} challenge</p>
-                <p className="rounded-full bg-slate-800 px-3 py-1 text-sm text-slate-200">Time left: {timer}s</p>
-              </div>
-              <pre className="mt-5 overflow-x-auto rounded-3xl bg-slate-900 p-6 text-sm leading-6 text-green-200">
-                <code>{snippet.code_text}</code>
-              </pre>
             </div>
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-              <label className="block text-sm font-medium text-slate-700">Predict console output</label>
-              <textarea
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
-                rows={8}
-                className="mt-3 w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-slate-500 focus:outline-none"
-              />
-              {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-              <button
-                onClick={handleSubmit}
-                disabled={loading}
-                className="mt-4 rounded-3xl bg-slate-900 px-5 py-3 text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Submit answer
-              </button>
-            </div>
-          </div>
-        )}
+          )}
 
-        {result && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4 py-6">
-            <div className="w-full max-w-3xl rounded-[2rem] bg-white p-8 shadow-2xl">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className={`text-sm font-semibold ${result.is_correct ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {result.is_correct ? 'Correct answer!' : 'Incorrect answer'}
-                  </p>
-                  <h3 className="mt-2 text-2xl font-semibold text-slate-900">Review your submission</h3>
-                </div>
+          {screen === 'exercise' && snippet && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <button onClick={() => setScreen('dashboard')} className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-sm">Back</button>
+                <p className="text-sm text-slate-700">{selectedDifficulty} challenge - {timer}s left</p>
               </div>
-
-              <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-                  <p className="text-sm text-slate-500">Your answer</p>
-                  <pre className="mt-3 whitespace-pre-wrap text-sm text-slate-900">{result.user_answer || 'No answer provided'}</pre>
-                </div>
-                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-                  <p className="text-sm text-slate-500">Expected output</p>
-                  <pre className="mt-3 whitespace-pre-wrap text-sm text-slate-900">{result.expected_output}</pre>
-                </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-950 p-5 text-white">
+                <pre className="overflow-x-auto rounded-xl bg-slate-900 p-4 text-sm text-green-200"><code>{snippet.code_text}</code></pre>
               </div>
-
-              <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-5">
-                <p className="text-sm text-slate-500">Explanation</p>
-                <p className="mt-3 text-sm leading-6 text-slate-700">{result.explanation}</p>
-              </div>
-
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setResult(null)
-                    setScreen('dashboard')
-                  }}
-                  className="rounded-3xl border border-slate-300 bg-white px-5 py-3 text-slate-900 transition hover:bg-slate-100"
-                >
-                  Back to dashboard
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setResult(null)
-                    handleNext()
-                  }}
-                  className="rounded-3xl bg-slate-900 px-5 py-3 text-white transition hover:bg-slate-800"
-                >
-                  Next question
-                </button>
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <label htmlFor="exercise-answer" className="block text-sm font-medium text-slate-700">Predict console output</label>
+                <textarea id="exercise-answer" value={answer} onChange={(e) => setAnswer(e.target.value)} rows={6} className="mt-2 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 focus:border-slate-500 focus:outline-none" />
+                {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+                <button onClick={handleSubmit} disabled={loading} className="mt-3 rounded-xl bg-slate-900 px-4 py-2 text-white hover:bg-slate-800 disabled:opacity-60">Submit answer</button>
               </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {result && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4 py-6">
+              <div className="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-2xl">
+                <p className={`text-sm font-semibold ${result.is_correct ? 'text-emerald-600' : 'text-rose-600'}`}>{result.is_correct ? 'Correct answer!' : 'Incorrect answer'}</p>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4"><p className="text-sm text-slate-500">Your answer</p><pre className="mt-2 whitespace-pre-wrap text-sm">{result.user_answer || 'No answer provided'}</pre></div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4"><p className="text-sm text-slate-500">Expected output</p><pre className="mt-2 whitespace-pre-wrap text-sm">{result.expected_output}</pre></div>
+                </div>
+                <p className="mt-3 text-sm text-slate-700">{result.explanation}</p>
+                <div className="mt-4 flex justify-end gap-2">
+                  <button type="button" onClick={() => { setResult(null); setScreen('dashboard') }} className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm">Back to dashboard</button>
+                  <button type="button" onClick={() => { setResult(null); selectDifficulty(selectedDifficulty, snippet?.id ?? null) }} className="rounded-xl bg-slate-900 px-4 py-2 text-sm text-white">Next question</button>
+                </div>
+              </div>
+            </div>
+          )}
+          {error && screen !== 'login' && <p className="mt-2 text-sm text-red-600">{error}</p>}
+        </div>
       </div>
     </div>
   )

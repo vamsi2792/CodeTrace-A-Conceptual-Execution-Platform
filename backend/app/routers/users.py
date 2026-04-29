@@ -12,4 +12,9 @@ def get_user_stats(db: Session = Depends(get_db), current_user=Depends(auth.get_
     stats = crud.get_user_stats(db, current_user.id)
     if not stats:
         stats = crud.create_user_stats(db, current_user.id)
-    return stats
+    return {
+        "username": current_user.username,
+        "snippets_solved": stats.snippets_solved,
+        "current_streak": stats.current_streak,
+        "accuracy_percentage": stats.accuracy_percentage,
+    }

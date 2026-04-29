@@ -13,7 +13,7 @@ def get_user(db: Session, user_id: int):
 
 
 def create_user(db: Session, user: schemas.UserCreate, hashed_password: str):
-    db_user = models.User(email=user.email, hashed_password=hashed_password)
+    db_user = models.User(username=user.username, email=user.email, hashed_password=hashed_password)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -77,6 +77,30 @@ def create_attempt(db: Session, user_id: int, snippet_id: int, user_answer: str,
     db.commit()
     db.refresh(attempt)
     return attempt
+
+
+def get_attempt_history(db: Session, user_id: int, limit: int = 30):
+    rows = (
+        db.query(models.Attempt, models.Snippet)
+        .join(models.Snippet, models.Attempt.snippet_id == models.Snippet.id)
+        .filter(models.Attempt.user_id == user_id)
+        .order_by(models.Attempt.timestamp.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        {
+            "attempt_id": attempt.id,
+            "snippet_id": snippet.id,
+            "difficulty_level": snippet.difficulty_level,
+            "code_text": snippet.code_text,
+            "expected_output": snippet.expected_output,
+            "user_answer": attempt.user_answer,
+            "is_correct": attempt.is_correct,
+            "attempted_at": attempt.timestamp,
+        }
+        for attempt, snippet in rows
+    ]
 
 
 def normalize_output(value: str) -> str:

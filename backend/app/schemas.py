@@ -4,12 +4,19 @@ from typing import Optional
 
 
 class UserCreate(BaseModel):
+    username: str
+    email: EmailStr
+    password: str
+
+
+class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
 
 class UserOut(BaseModel):
     id: int
+    username: str
     email: EmailStr
     created_at: datetime
 
@@ -48,9 +55,21 @@ class AttemptResult(BaseModel):
 
 
 class UserStatsOut(BaseModel):
+    username: str
     snippets_solved: int
     current_streak: int
     accuracy_percentage: int
 
     class Config:
         orm_mode = True
+
+
+class AttemptHistoryItem(BaseModel):
+    attempt_id: int
+    snippet_id: int
+    difficulty_level: str
+    code_text: str
+    expected_output: str
+    user_answer: str
+    is_correct: bool
+    attempted_at: datetime

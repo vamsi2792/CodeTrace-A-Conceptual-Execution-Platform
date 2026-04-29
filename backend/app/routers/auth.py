@@ -20,7 +20,7 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=schemas.Token)
-def login(form_data: schemas.UserCreate, db: Session = Depends(get_db)):
+def login(form_data: schemas.UserLogin, db: Session = Depends(get_db)):
     user = crud.get_user_by_email(db, form_data.email)
     if not user or not auth.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
