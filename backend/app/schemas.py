@@ -54,6 +54,10 @@ class AttemptResult(BaseModel):
     explanation: str
 
 
+class AssistantResponse(BaseModel):
+    message: str
+
+
 class UserStatsOut(BaseModel):
     username: str
     snippets_solved: int
