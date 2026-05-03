@@ -20,8 +20,7 @@ class UserOut(BaseModel):
     email: EmailStr
     created_at: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = {"from_attributes": True}
 
 
 class Token(BaseModel):
@@ -38,8 +37,7 @@ class SnippetOut(BaseModel):
     difficulty_level: str
     code_text: str
 
-    class Config:
-        orm_mode = True
+    model_config = {"from_attributes": True}
 
 
 class AttemptCreate(BaseModel):
@@ -64,8 +62,7 @@ class UserStatsOut(BaseModel):
     current_streak: int
     accuracy_percentage: int
 
-    class Config:
-        orm_mode = True
+    model_config = {"from_attributes": True}
 
 
 class AttemptHistoryItem(BaseModel):

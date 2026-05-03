@@ -25,6 +25,7 @@ class Snippet(Base):
     code_text = Column(Text, nullable=False)
     expected_output = Column(Text, nullable=False)
     explanation = Column(Text, nullable=False)
+    last_asked_at = Column(DateTime(timezone=True), nullable=True)
 
     attempts = relationship("Attempt", back_populates="snippet")
 

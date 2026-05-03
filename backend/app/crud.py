@@ -1,5 +1,6 @@
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_, text
 
 from . import models, schemas
 
@@ -32,6 +33,9 @@ def get_user_stats(db: Session, user_id: int):
     return db.query(models.UserStat).filter(models.UserStat.user_id == user_id).first()
 
 
+REPEAT_SNIPPET_COOLDOWN_SECONDS = 1800  # 30 minutes
+
+
 def get_random_snippet(db: Session, difficulty: str, exclude_snippet_id: int | None = None):
     query = db.query(models.Snippet).filter(models.Snippet.difficulty_level == difficulty)
     if exclude_snippet_id is not None:
@@ -49,6 +53,28 @@ def get_random_snippet(db: Session, difficulty: str, exclude_snippet_id: int | N
     )
 
 
+def get_random_unasked_snippet(db: Session, difficulty: str, exclude_snippet_id: int | None = None, cooldown_seconds: int = REPEAT_SNIPPET_COOLDOWN_SECONDS):
+    cutoff = func.now() - text(f"interval '{cooldown_seconds} seconds'")
+    query = db.query(models.Snippet).filter(models.Snippet.difficulty_level == difficulty)
+    if exclude_snippet_id is not None:
+        query = query.filter(models.Snippet.id != exclude_snippet_id)
+    query = query.filter(
+        or_(
+            models.Snippet.last_asked_at == None,
+            models.Snippet.last_asked_at < cutoff,
+        )
+    )
+    return query.order_by(func.random()).first()
+
+
+def mark_snippet_asked(db: Session, snippet: models.Snippet):
+    snippet.last_asked_at = datetime.now(timezone.utc)
+    db.add(snippet)
+    db.commit()
+    db.refresh(snippet)
+    return snippet
+
+
 def is_deterministic_code(code_text: str) -> bool:
     normalized = code_text.lower()
     forbidden_tokens = ["input(", "raw_input(", "sys.stdin", "sys.argv", "getpass(", "prompt("]
@@ -56,6 +82,14 @@ def is_deterministic_code(code_text: str) -> bool:
 
 
 def get_random_safe_snippet(db: Session, difficulty: str, exclude_snippet_id: int | None = None, attempts: int = 8):
+    # Prefer snippets that have not been asked recently.
+    for _ in range(attempts):
+        snippet = get_random_unasked_snippet(db, difficulty, exclude_snippet_id)
+        if snippet is None:
+            break
+        if is_deterministic_code(snippet.code_text):
+            return snippet
+    # If all snippets were recently used or not deterministic, fall back to any safe snippet.
     for _ in range(attempts):
         snippet = get_random_snippet(db, difficulty, exclude_snippet_id)
         if snippet is None:
@@ -69,12 +103,13 @@ def get_snippet(db: Session, snippet_id: int):
     return db.query(models.Snippet).filter(models.Snippet.id == snippet_id).first()
 
 
-def create_snippet(db: Session, difficulty_level: str, code_text: str, expected_output: str, explanation: str):
+def create_snippet(db: Session, difficulty_level: str, code_text: str, expected_output: str, explanation: str, last_asked_at=None):
     snippet = models.Snippet(
         difficulty_level=difficulty_level,
         code_text=code_text,
         expected_output=expected_output,
         explanation=explanation,
+        last_asked_at=last_asked_at,
     )
     db.add(snippet)
     db.commit()
