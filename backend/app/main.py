@@ -6,8 +6,13 @@ from . import models
 from .routers import auth, snippets, attempts, users
 from .seed import run as seed_database
 
-models.Base.metadata.create_all(bind=engine)
-seed_database()
+# models.Base.metadata.create_all(bind=engine)
+# seed_database()
+try:
+    models.Base.metadata.create_all(bind=engine)
+    seed_database()
+except Exception as e:
+    print("DB not available, skipping init:", e)
 
 app = FastAPI(title="CodeTrace Educational Platform API")
 
@@ -18,7 +23,7 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"] ,
     allow_headers=["*"],

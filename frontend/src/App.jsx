@@ -245,7 +245,7 @@ function App() {
                     <p className="text-sm uppercase tracking-[0.3em] text-slate-400">AI Practice</p>
                     <h3 className="mt-2 text-2xl font-semibold text-white">Generate new exercises instantly</h3>
                   </div>
-                  <div className="rounded-full bg-blue-500 px-3 py-1 text-sm font-semibold text-white">Powered by GPT</div>
+                  <div className="rounded-full bg-blue-500 px-3 py-1 text-sm font-semibold text-white">Try it Out</div>
                 </div>
                 <p className="mt-4 text-slate-300">Every question is created on demand. The more you practice, the sharper your output reading becomes.</p>
                 <div className="mt-6 grid gap-4 sm:grid-cols-3">
@@ -390,7 +390,7 @@ function App() {
                     <p className="text-sm uppercase tracking-[0.25em] text-slate-400">AI Tutor</p>
                     <h3 className="mt-2 text-2xl font-semibold text-white">Your tutor assistant</h3>
                   </div>
-                  <span className="rounded-full bg-indigo-500 px-3 py-1 text-sm font-semibold text-white">History</span>
+                  <span className="rounded-full bg-indigo-500 px-3 py-1 text-sm font-semibold text-white"></span>
                 </div>
                 <p className="mt-4 text-slate-300">Send a hint, explanation, or ask why an answer is wrong. The tutor keeps a record of every response.</p>
                 <div className="mt-6 grid gap-3">
