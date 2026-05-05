@@ -1,6 +1,4 @@
-// const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-
-const API_BASE = "https://codetrace-backend-282324739306.us-central1.run.app"
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8001'
 
 async function request(endpoint, options) {
   const requestOptions = options || {}
