@@ -1,4 +1,3 @@
-import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -17,21 +16,16 @@ except Exception as e:
 
 app = FastAPI(title="CodeTrace Educational Platform API")
 
-# ALLOWED_ORIGINS accepts a comma-separated list so the same image works in
-# both local dev and Cloud Run without a rebuild.
-# Example Cloud Run env var:
-#   ALLOWED_ORIGINS=https://codetrace-frontend-282324739306.us-central1.run.app
-_raw = os.getenv(
-    "ALLOWED_ORIGINS",
-    "http://localhost:5173,http://127.0.0.1:5173",
-)
-allowed_origins = [o.strip() for o in _raw.split(",") if o.strip()]
+origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["*"] ,
     allow_headers=["*"],
 )
 
