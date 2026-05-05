@@ -16,16 +16,10 @@ except Exception as e:
 
 app = FastAPI(title="CodeTrace Educational Platform API")
 
-origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "https://codetrace-frontend-282324739306.us-central1.run.app",
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
